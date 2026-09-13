@@ -1,0 +1,6 @@
+{
+  "name": "MediDesk",
+  "description": "AI-Assisted Clinic Management Application for doctors and reception staff with complete OPD workflow, queue, vitals, consultation, medicine safety, digital prescription, billing, analytics, and Gemini AI assistance.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
