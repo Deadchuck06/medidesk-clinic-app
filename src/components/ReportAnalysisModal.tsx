@@ -18,21 +18,10 @@ export const ReportAnalysisModal: React.FC<ReportAnalysisModalProps> = ({
 }) => {
   const [reportTitle, setReportTitle] = useState("Complete Blood Count (CBC) & Biochemistry");
   const [reportType, setReportType] = useState("Laboratory Report");
-  const [reportText, setReportText] = useState(
-    `LABORATORY INVESTIGATION REPORT
-Patient: ${patientName}
-Specimen: Whole Blood EDTA & Serum
+  const [reportText, setReportText] = useState("");
 
-Hemoglobin: 13.8 g/dL (Ref: 13.0 - 17.0 g/dL)
-Total Leucocyte Count (TLC): 11,800 /cu.mm (Ref: 4,000 - 10,000 /cu.mm) [HIGH]
-Neutrophils: 78% (Ref: 40 - 70%) [ELEVATED]
-Lymphocytes: 18% (Ref: 20 - 40%)
-Platelet Count: 240,000 /cu.mm (Ref: 150,000 - 450,000 /cu.mm)
-Erythrocyte Sedimentation Rate (ESR): 28 mm/1st hr (Ref: 0 - 15 mm) [ELEVATED]
-Serum Creatinine: 0.9 mg/dL (Ref: 0.7 - 1.2 mg/dL)
-Random Blood Sugar: 112 mg/dL (Ref: 70 - 140 mg/dL)`
-  );
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [imageMimeType, setImageMimeType] = useState<string>("image/jpeg");
   const [imageFileName, setImageFileName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
@@ -45,6 +34,7 @@ Random Blood Sugar: 112 mg/dL (Ref: 70 - 140 mg/dL)`
     if (!file) return;
 
     setImageFileName(file.name);
+    setImageMimeType(file.type);
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
@@ -62,7 +52,7 @@ Random Blood Sugar: 112 mg/dL (Ref: 70 - 140 mg/dL)`
         reportText,
         reportType,
         imageBase64 || undefined,
-        "image/jpeg"
+        imageMimeType
       );
       setAnalysisResult(res.analysis);
     } catch (err: any) {

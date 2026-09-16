@@ -4,7 +4,7 @@ import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { GoogleGenAI, Type } from "@google/genai";
 
-dotenv.config();
+dotenv.config({ path: ".env.local" });
 
 function getGenAI() {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -71,7 +71,7 @@ SAFETY RULES:
 - Formulate a clear, concise, structured consultation draft.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.7-flash",
+        model: "gemini-3.5-flash-lite",
         contents: prompt,
         config: {
           systemInstruction: "You are an AI Clinical Scribe assistant. Produce structured outpatient consultation drafts for doctor review. All output is draft decision-support only.",
@@ -151,13 +151,22 @@ Report Category: ${reportType || "General Medical Report"}
 Provided Text / Metadata:
 ${reportText || "See attached document/image"}
 
-Analyze the report carefully and provide a structured summary.
-Identify abnormal values, highlight key findings, and formulate concise clinical observations for the doctor.
-Mark clearly that this is decision-support for doctor interpretation.`
+Analyze ONLY the information contained in the supplied report.
+
+IMPORTANT RULES:
+- Compare every numerical result with the reference range printed next to that result.
+- Include EVERY value outside its supplied reference range in abnormalValues.
+- Check for both HIGH and LOW values.
+- Copy parameter names, observed values, units, and reference ranges exactly from the report.
+- Do not omit an abnormal value even if it appears clinically minor.
+- Do not invent symptoms, diagnoses, patient history, examination findings, causes, or clinical context that are not present in the report.
+- If a parameter has no supplied reference range, do not independently classify it as normal or abnormal.
+- Summaries and observations must remain grounded only in the supplied report.
+- This output is decision-support for doctor review and is not an independent diagnosis.`
       });
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.7-flash",
+        model: "gemini-3.5-flash-lite",
         contents: contents.length === 1 ? contents[0].text : { parts: contents },
         config: {
           systemInstruction: "You are an AI Medical Document Assistant. Extract structured findings, abnormal flags, and summaries from lab/diagnostic reports for licensed doctor review. Never state definitive independent diagnoses.",
@@ -235,7 +244,7 @@ Stored Mechanism: ${mechanism || "Not specified"}
 Provide a concise 2-3 sentence clinical explanation of WHY this interaction occurs and practical precautions (e.g., timing of administration, symptom monitoring, or alternative considerations). Do not fabricate extra interactions beyond these two drugs.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.7-flash",
+        model: "gemini-3.5-flash-lite",
         contents: prompt
       });
 
