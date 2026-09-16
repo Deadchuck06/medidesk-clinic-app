@@ -43,7 +43,7 @@ export class AuthRepository {
       name: cleanEmail.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
       email: cleanEmail,
       role: role || "RECEPTION",
-      clinicName: "CityCare Family Clinic & OPD Center",
+      clinicName: "INDUS DIABETES & OBESITY CENTRE",
       doctorSpecialization: role === "DOCTOR" ? "MBBS (General Practitioner)" : undefined,
       registrationNo: role === "DOCTOR" ? `DOC-${Math.floor(10000 + Math.random() * 90000)}` : undefined,
     };
@@ -61,10 +61,10 @@ export class AuthRepository {
     const newRole: Role = current?.role === "DOCTOR" ? "RECEPTION" : "DOCTOR";
     const targetDemo = DEMO_USERS.find((u) => u.role === newRole) || {
       id: `usr_${newRole.toLowerCase()}`,
-      name: newRole === "DOCTOR" ? "Dr. Rajesh Sharma" : "Pooja Verma",
+      name: newRole === "DOCTOR" ? "Dr. Shweta Shukla" : "Pooja Verma",
       email: newRole === "DOCTOR" ? "doctor@medidesk.clinic" : "reception@medidesk.clinic",
       role: newRole,
-      clinicName: "CityCare Family Clinic & OPD Center",
+      clinicName: "INDUS DIABETES & OBESITY CENTRE",
       doctorSpecialization: newRole === "DOCTOR" ? "MBBS, MD (Internal Medicine)" : undefined,
       registrationNo: newRole === "DOCTOR" ? "MCI-48291" : undefined,
     };
