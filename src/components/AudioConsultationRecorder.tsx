@@ -1,144 +1,240 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Mic, MicOff, RotateCcw, Sparkles, Volume2, AlertCircle } from "lucide-react";
+import React, { useRef, useState } from "react";
+import {
+  Mic,
+  MicOff,
+  RotateCcw,
+  Sparkles,
+  Volume2,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
+
+import { AIService } from "../services/aiService";
 
 interface AudioConsultationRecorderProps {
   onTranscriptReady: (transcript: string) => void;
   onRequestSummarize?: (transcript: string) => void;
 }
 
-export const AudioConsultationRecorder: React.FC<AudioConsultationRecorderProps> = ({
-  onTranscriptReady,
-  onRequestSummarize,
-}) => {
+export const AudioConsultationRecorder: React.FC<
+  AudioConsultationRecorderProps
+> = ({ onTranscriptReady, onRequestSummarize }) => {
   const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [isSupported, setIsSupported] = useState(true);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const recognitionRef = useRef<any>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<any>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
-  useEffect(() => {
-    // Check Web Speech API support
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  const formatTime = (secs: number) => {
+    const minutes = Math.floor(secs / 60);
+    const seconds = secs % 60;
 
-    if (!SpeechRecognition) {
-      setIsSupported(false);
+    return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+  };
+
+  const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        const base64 = result.split(",")[1];
+
+        if (!base64) {
+          reject(new Error("Could not convert audio recording."));
+          return;
+        }
+
+        resolve(base64);
+      };
+
+      reader.onerror = () => {
+        reject(new Error("Could not read audio recording."));
+      };
+
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  const startRecording = async () => {
+    setError(null);
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError(
+        "Audio recording is not supported in this browser. Please use Chrome or Edge."
+      );
       return;
     }
 
     try {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = "en-US";
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
 
-      recognition.onresult = (event: any) => {
-        let currentText = "";
-        for (let i = 0; i < event.results.length; i++) {
-          currentText += event.results[i][0].transcript + " ";
+      streamRef.current = stream;
+      audioChunksRef.current = [];
+
+      let mimeType = "";
+
+      if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+        mimeType = "audio/webm;codecs=opus";
+      } else if (MediaRecorder.isTypeSupported("audio/webm")) {
+        mimeType = "audio/webm";
+      }
+
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event: BlobEvent) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
         }
-        setTranscript(currentText.trim());
-        onTranscriptReady(currentText.trim());
       };
 
-      recognition.onerror = (event: any) => {
-        console.warn("Speech recognition notice:", event.error);
-        if (event.error === "not-allowed") {
-          setIsRecording(false);
-        }
+      recorder.onerror = (event: any) => {
+        console.error("MediaRecorder error:", event);
+
+        setError(
+          "There was a problem recording audio. Please try again."
+        );
       };
 
-      recognition.onend = () => {
-        if (isRecording) {
-          try {
-            recognition.start();
-          } catch {
-            setIsRecording(false);
+      recorder.onstop = async () => {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+
+        streamRef.current?.getTracks().forEach((track) => {
+          track.stop();
+        });
+
+        streamRef.current = null;
+
+        const actualMimeType =
+          recorder.mimeType || mimeType || "audio/webm";
+
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: actualMimeType,
+        });
+
+        if (audioBlob.size === 0) {
+          setError(
+            "No audio was captured. Please try recording again."
+          );
+          return;
+        }
+
+        setIsTranscribing(true);
+        setError(null);
+
+        try {
+          const audioBase64 = await blobToBase64(audioBlob);
+
+          const result = await AIService.transcribeAudio(
+            audioBase64,
+            actualMimeType
+          );
+
+          const newTranscript = result.transcript.trim();
+
+          if (!newTranscript) {
+            throw new Error(
+              "No speech could be transcribed from the recording."
+            );
           }
+
+          const combinedTranscript = transcript.trim()
+            ? `${transcript.trim()} ${newTranscript}`
+            : newTranscript;
+
+          setTranscript(combinedTranscript);
+
+          // Send transcript to ConsultationScreen
+          onTranscriptReady(combinedTranscript);
+        } catch (err: any) {
+          console.error("Audio transcription failed:", err);
+
+          setError(
+            err.message ||
+              "Gemini could not transcribe the recording. Please try again."
+          );
+        } finally {
+          setIsTranscribing(false);
         }
       };
 
-      recognitionRef.current = recognition;
-    } catch {
-      setIsSupported(false);
-    }
+      recorder.start();
 
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch {}
-      }
-    };
-  }, []);
-
-  const toggleRecording = () => {
-    if (isRecording) {
-      // Stop
-      setIsRecording(false);
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch {}
-      }
-    } else {
-      // Start
       setIsRecording(true);
       setRecordingSeconds(0);
-      timerRef.current = setInterval(() => {
-        setRecordingSeconds((prev) => prev + 1);
-      }, 1000);
 
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.start();
-        } catch {
-          // Simulation speech fallback if mic blocked in sandbox iframe
-          simulateDictation();
-        }
+      timerRef.current = setInterval(() => {
+        setRecordingSeconds((previous) => previous + 1);
+      }, 1000);
+    } catch (err: any) {
+      console.error("Microphone access failed:", err);
+
+      if (
+        err?.name === "NotAllowedError" ||
+        err?.name === "PermissionDeniedError"
+      ) {
+        setError(
+          "Microphone permission was denied. Please allow microphone access and try again."
+        );
       } else {
-        simulateDictation();
+        setError(
+          "Could not access the microphone. Please check your microphone and try again."
+        );
       }
     }
   };
 
-  const simulateDictation = () => {
-    // Sample simulated dictation for sandboxed environments where browser mic permission is locked
-    const sampleSentences = [
-      "Patient reports fever and severe dry cough since past 3 days.",
-      " Temperature was 101.4 Fahrenheit on admission, throat shows mild erythematous congestion.",
-      " Chest is clear on auscultation, no added sounds.",
-      " Advised Paracetamol 650mg SOS and Augmentin 625mg twice daily after meals.",
-      " Advised warm water gargles, light diet, review after 3 days if fever persists."
-    ];
-    let index = 0;
-    const interval = setInterval(() => {
-      if (index < sampleSentences.length) {
-        setTranscript((prev) => {
-          const next = (prev + sampleSentences[index]).trim();
-          onTranscriptReady(next);
-          return next;
-        });
-        index++;
-      } else {
-        clearInterval(interval);
-      }
-    }, 1200);
+  const stopRecording = () => {
+    setIsRecording(false);
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    const recorder = mediaRecorderRef.current;
+
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+    }
+  };
+
+  const toggleRecording = () => {
+    if (isTranscribing) {
+      return;
+    }
+
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
   };
 
   const handleReset = () => {
+    if (isRecording) {
+      stopRecording();
+    }
+
     setTranscript("");
     setRecordingSeconds(0);
-    onTranscriptReady("");
-  };
+    setError(null);
 
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}:${s < 10 ? "0" : ""}${s}`;
+    onTranscriptReady("");
   };
 
   return (
@@ -148,21 +244,41 @@ export const AudioConsultationRecorder: React.FC<AudioConsultationRecorderProps>
           <button
             type="button"
             onClick={toggleRecording}
+            disabled={isTranscribing}
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all shadow-xs ${
               isRecording
                 ? "bg-rose-600 text-white ring-4 ring-rose-200 animate-pulse"
+                : isTranscribing
+                ? "bg-slate-400 text-white cursor-wait"
                 : "bg-indigo-600 text-white hover:bg-indigo-700"
             }`}
-            title={isRecording ? "Stop Dictation" : "Start Voice Dictation"}
+            title={
+              isRecording
+                ? "Stop Recording"
+                : isTranscribing
+                ? "Transcribing Audio"
+                : "Start Voice Dictation"
+            }
           >
-            {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+            {isTranscribing ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : isRecording ? (
+              <MicOff className="h-5 w-5" />
+            ) : (
+              <Mic className="h-5 w-5" />
+            )}
           </button>
 
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-indigo-950">
-                {isRecording ? "Listening & Transcribing..." : "Doctor Voice Scribe / Audio Dictation"}
+                {isRecording
+                  ? "Recording Doctor Dictation..."
+                  : isTranscribing
+                  ? "Gemini is transcribing audio..."
+                  : "Doctor Voice Scribe / Audio Dictation"}
               </span>
+
               {isRecording && (
                 <span className="flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700">
                   <span className="h-1.5 w-1.5 rounded-full bg-rose-600 animate-ping" />
@@ -170,14 +286,16 @@ export const AudioConsultationRecorder: React.FC<AudioConsultationRecorderProps>
                 </span>
               )}
             </div>
+
             <p className="text-[11px] text-indigo-800">
-              Dictate findings or conversation; Gemini will format into structured OPD consultation fields.
+              Record clinical findings; Gemini will transcribe the audio
+              into text for doctor review.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {transcript && (
+          {transcript && !isRecording && !isTranscribing && (
             <>
               <button
                 type="button"
@@ -191,7 +309,9 @@ export const AudioConsultationRecorder: React.FC<AudioConsultationRecorderProps>
               {onRequestSummarize && (
                 <button
                   type="button"
-                  onClick={() => onRequestSummarize(transcript)}
+                  onClick={() =>
+                    onRequestSummarize(transcript)
+                  }
                   className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 shadow-2xs"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
@@ -203,12 +323,32 @@ export const AudioConsultationRecorder: React.FC<AudioConsultationRecorderProps>
         </div>
       </div>
 
+      {error && (
+        <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+
+          <span>{error}</span>
+        </div>
+      )}
+
+      {isTranscribing && (
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-indigo-200 bg-white p-3 text-xs font-semibold text-indigo-700">
+          <Loader2 className="h-4 w-4 animate-spin" />
+
+          <span>
+            Processing recorded audio with Gemini...
+          </span>
+        </div>
+      )}
+
       {transcript && (
-        <div className="mt-3 rounded-lg bg-white border border-indigo-100 p-2.5 text-xs text-slate-800 leading-relaxed font-mono">
-          <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-indigo-600 mb-1">
+        <div className="mt-3 rounded-lg border border-indigo-100 bg-white p-2.5 text-xs leading-relaxed text-slate-800 font-mono">
+          <div className="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-indigo-600">
             <Volume2 className="h-3 w-3" />
+
             <span>Captured Voice Transcript</span>
           </div>
+
           {transcript}
         </div>
       )}

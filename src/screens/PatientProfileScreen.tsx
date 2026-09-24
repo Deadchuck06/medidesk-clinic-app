@@ -40,6 +40,7 @@ export const PatientProfileScreen: React.FC<PatientProfileScreenProps> = ({
   const [visits, setVisits] = useState<Visit[]>([]);
   const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null);
   const [viewingPrescriptionVisit, setViewingPrescriptionVisit] = useState<Visit | null>(null);
+  const [expandedReport, setExpandedReport] = useState<string | null>(null);
 
   const refreshData = () => {
     const data = PatientRepository.getPatientHistory(patientId);
@@ -375,26 +376,152 @@ export const PatientProfileScreen: React.FC<PatientProfileScreenProps> = ({
                         </div>
                       )}
 
-                      {/* Lab Reports if attached */}
-                      {v.reportAnalyses && v.reportAnalyses.length > 0 && (
-                        <div>
-                          <span className="text-xs font-bold uppercase tracking-wider text-indigo-900 block mb-2 flex items-center gap-1.5">
-                            <FileSearch className="h-4 w-4 text-indigo-600" />
-                            <span>Attached Lab & Diagnostic Analyses ({v.reportAnalyses.length})</span>
-                          </span>
-                          <div className="space-y-2">
-                            {v.reportAnalyses.map((rep, rIdx) => (
-                              <div key={rIdx} className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3 text-xs">
-                                <div className="font-bold text-indigo-950 flex items-center justify-between">
-                                  <span>{rep.reportTitle}</span>
-                                  <span className="text-[10px] text-indigo-700 font-semibold">{rep.reportType}</span>
-                                </div>
-                                <p className="text-slate-700 mt-1">{rep.conciseSummary}</p>
+          {/* Lab Reports if attached */}
+{v.reportAnalyses && v.reportAnalyses.length > 0 && (
+  <div>
+    <span className="text-xs font-bold uppercase tracking-wider text-indigo-900 block mb-2 flex items-center gap-1.5">
+      <FileSearch className="h-4 w-4 text-indigo-600" />
+
+      <span>
+        Attached Lab & Diagnostic Analyses ({v.reportAnalyses.length})
+      </span>
+    </span>
+
+    <div className="space-y-2">
+      {v.reportAnalyses.map((rep, rIdx) => {
+        const reportKey = `${v.id}-${rIdx}`;
+        const isExpanded = expandedReport === reportKey;
+
+        return (
+          <div
+            key={reportKey}
+            className="rounded-xl border border-indigo-200 bg-indigo-50/50 overflow-hidden"
+          >
+            {/* Clickable Report Header */}
+            <button
+              type="button"
+              onClick={() =>
+                setExpandedReport(isExpanded ? null : reportKey)
+              }
+              className="w-full p-3 text-left hover:bg-indigo-100/60 transition-colors"
+            >
+              <div className="font-bold text-indigo-950 flex items-center justify-between gap-3">
+                <span>{rep.reportTitle}</span>
+
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] text-indigo-700 font-semibold">
+                    {rep.reportType}
+                  </span>
+
+                  <span className="text-indigo-600 text-sm">
+                    {isExpanded ? "▲" : "▼"}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-slate-700 mt-1 text-xs">
+                {rep.conciseSummary}
+              </p>
+            </button>
+
+            {/* Expanded Report Details */}
+            {isExpanded && (
+              <div className="border-t border-indigo-200 bg-white p-4 space-y-4 text-xs">
+
+                {/* Abnormal Values */}
+                {rep.abnormalValues &&
+                  rep.abnormalValues.length > 0 && (
+                    <div>
+                      <div className="font-bold text-rose-700 mb-2">
+                        Flagged Abnormal Values
+                      </div>
+
+                      <div className="space-y-2">
+                        {rep.abnormalValues.map((item, index) => (
+                          <div
+                            key={index}
+                            className="rounded-lg border border-rose-100 bg-rose-50 p-2"
+                          >
+                            <div className="font-semibold text-slate-900">
+                              {item.parameter}: {item.value}
+                            </div>
+
+                            <div className="text-slate-600 mt-0.5">
+                              Reference: {item.referenceRange}
+                            </div>
+
+                            {item.note && (
+                              <div className="text-rose-700 mt-0.5">
+                                {item.note}
                               </div>
-                            ))}
+                            )}
                           </div>
-                        </div>
-                      )}
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                {/* Important Findings */}
+                {rep.importantFindings &&
+                  rep.importantFindings.length > 0 && (
+                    <div>
+                      <div className="font-bold text-emerald-700 mb-1">
+                        Important Findings
+                      </div>
+
+                      <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                        {rep.importantFindings.map(
+                          (finding, index) => (
+                            <li key={index}>{finding}</li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  )}
+
+                {/* Observations */}
+                {rep.observations &&
+                  rep.observations.length > 0 && (
+                    <div>
+                      <div className="font-bold text-slate-800 mb-1">
+                        Observations
+                      </div>
+
+                      <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                        {rep.observations.map(
+                          (observation, index) => (
+                            <li key={index}>{observation}</li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  )}
+
+                {/* Doctor Attention */}
+                {rep.attentionPoints &&
+                  rep.attentionPoints.length > 0 && (
+                    <div>
+                      <div className="font-bold text-amber-700 mb-1">
+                        Points for Doctor Attention
+                      </div>
+
+                      <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                        {rep.attentionPoints.map(
+                          (point, index) => (
+                            <li key={index}>{point}</li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  </div>
+)}
 
                       {/* Billing Information */}
                       {v.billing && (

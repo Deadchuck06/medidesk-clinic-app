@@ -55,15 +55,19 @@ export class AnalyticsRepository {
     });
 
     // Diagnoses frequency across all recorded visits
-    const diagnosisCounts: Record<string, number> = {};
-    allVisits.forEach((v) => {
-      const diag = v.consultation?.diagnosis || v.prescription?.diagnosis;
-      if (diag && diag.trim()) {
-        const cleanDiag = diag.split(/[,;\n]/)[0].trim();
-        diagnosisCounts[cleanDiag] = (diagnosisCounts[cleanDiag] || 0) + 1;
-      }
-    });
+    // Diagnosis frequency from completed patient consultations
+const diagnosisCounts: Record<string, number> = {};
 
+allVisits
+  .filter((visit) => visit.status === "COMPLETED")
+  .forEach((visit) => {
+    const diagnosis = visit.consultation?.diagnosis?.trim();
+
+    if (diagnosis) {
+      diagnosisCounts[diagnosis] =
+        (diagnosisCounts[diagnosis] || 0) + 1;
+    }
+  });
     const topDiagnoses = Object.entries(diagnosisCounts)
       .map(([diagnosis, count]) => ({ diagnosis, count }))
       .sort((a, b) => b.count - a.count)

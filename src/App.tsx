@@ -47,14 +47,13 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Initialize storage demo data if empty
-  useEffect(() => {
-    AppStorage.init();
-    const user = AuthRepository.getCurrentUser();
-    setCurrentUser(user);
-    if (user) {
-      setActiveTab(user.role === "DOCTOR" ? "doctor_dashboard" : "reception_dashboard");
-    }
-  }, []);
+ useEffect(() => {
+  AppStorage.init();
+
+  AuthRepository.logout();
+  setCurrentUser(null);
+  setActiveTab("login");
+}, []);
 
   const handleLogin = (user: User) => {
     setCurrentUser(user);

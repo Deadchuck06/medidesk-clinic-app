@@ -18,7 +18,6 @@ import { StatusBadge } from "../components/StatusBadge";
 import { MedicineSafetyAlert } from "../components/MedicineSafetyAlert";
 import { AIReviewModal } from "../components/AIReviewModal";
 import { ReportAnalysisModal } from "../components/ReportAnalysisModal";
-import { AudioConsultationRecorder } from "../components/AudioConsultationRecorder";
 import { PrescriptionView } from "../components/PrescriptionView";
 import {
   Stethoscope,
@@ -308,8 +307,8 @@ export const ConsultationScreen: React.FC<ConsultationScreenProps> = ({
       doctorName: currentUser.name,
       doctorRegNo: currentUser.registrationNo || "DOC-84920",
       clinicName: currentUser.clinicName,
-      clinicAddress: "102 Health Avenue, Medical Enclave, Central OPD",
-      clinicPhone: "+91 11-4567-8900",
+      clinicAddress: "JAIN BHUVAN, DEVCHAND NAGAR, BHAYANDAR (W), 401101",
+      clinicPhone: "02228191387 | Mob: 9820324286", 
       chiefComplaint: chiefComplaint.trim(),
       diagnosis: diagnosis.trim(),
       medicines: prescribedMedicines,
@@ -518,7 +517,7 @@ export const ConsultationScreen: React.FC<ConsultationScreenProps> = ({
                     AI Consultation Assistant (Gemini)
                   </h3>
                   <p className="text-xs text-indigo-800">
-                    Dictate or type raw findings. Gemini structures notes into Chief Complaint, History, Examination, and Diagnosis drafts.
+                    Type raw findings. Gemini structures notes into Chief Complaint, History, Examination, and Diagnosis drafts.
                   </p>
                 </div>
               </div>
@@ -529,10 +528,7 @@ export const ConsultationScreen: React.FC<ConsultationScreenProps> = ({
             </div>
 
             {/* Voice Dictation Component */}
-            <AudioConsultationRecorder
-              onTranscriptReady={(transcript) => setRawNotesInput(transcript)}
-              onRequestSummarize={(transcript) => handleRunAiSummarize(transcript)}
-            />
+           {/* Voice dictation temporarily hidden */}
 
             {/* Text Input Option */}
             <div className="space-y-2">

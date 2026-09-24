@@ -27,7 +27,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginSucces
       setEmail("reception@medidesk.clinic");
       setPassword("reception123");
     } else {
-      setEmail("doctor.sharma@medidesk.clinic");
+      setEmail("doctor.shukla@medidesk.clinic");
       setPassword("doctor123");
     }
   };
@@ -35,7 +35,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginSucces
   const handleQuickLogin = (role: Role) => {
     setErrorMessage(null);
     const targetEmail =
-      role === "RECEPTION" ? "reception@medidesk.clinic" : "doctor.sharma@medidesk.clinic";
+      role === "RECEPTION" ? "reception@medidesk.clinic" : "doctor.shukla@medidesk.clinic";
     const res = AuthRepository.login(targetEmail, "demo123", role);
     if (res.success && res.user) {
       handleSuccessfulAuth(res.user);
@@ -220,7 +220,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginSucces
                   <span>Doctor Dashboard</span>
                   <span className="text-[10px] text-indigo-600 font-semibold group-hover:underline">Enter →</span>
                 </div>
-                <div className="text-[10px] text-indigo-700/80 truncate mt-0.5 font-mono">doctor.sharma@medidesk.clinic</div>
+                <div className="text-[10px] text-indigo-700/80 truncate mt-0.5 font-mono">doctor.shukla@medidesk.clinic</div>
               </button>
             </div>
           </div>

@@ -44,7 +44,7 @@ export const AddWalkInScreen: React.FC<AddWalkInScreenProps> = ({
   // Live duplicate checking on mobile number change
   useEffect(() => {
     const cleanMobile = mobileNumber.trim().replace(/\D/g, "");
-    if (cleanMobile.length >= 10) {
+    if (cleanMobile.length === 10) {
       const match = PatientRepository.findByMobile(cleanMobile);
       if (match) {
         setExistingPatient(match);
@@ -108,7 +108,7 @@ export const AddWalkInScreen: React.FC<AddWalkInScreenProps> = ({
         age: ageNum,
         gender,
         mobileNumber: cleanMob,
-        address: address.trim() || undefined,
+       address: address.trim(),
         chiefConcern: chiefConcern.trim(),
       });
       patientIdToUse = newPat.id;
@@ -201,14 +201,19 @@ export const AddWalkInScreen: React.FC<AddWalkInScreenProps> = ({
                 <Phone className="h-4 w-4" />
               </div>
               <input
-                type="tel"
-                id="walkin-mobile"
-                value={mobileNumber}
-                onChange={(e) => setMobileNumber(e.target.value)}
-                placeholder="e.g. 9876543210"
-                className="w-full rounded-xl border border-slate-300 bg-slate-50/50 pl-10 pr-4 py-3 text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-                required
-              />
+  type="tel"
+  id="walkin-mobile"
+  value={mobileNumber}
+  onChange={(e) => {
+    const value = e.target.value.replace(/\D/g, "").slice(0, 10);
+    setMobileNumber(value);
+  }}
+  maxLength={10}
+  inputMode="numeric"
+  placeholder="e.g. 9876543210"
+  className="w-full rounded-xl border border-slate-300 bg-slate-50/50 pl-10 pr-4 py-3 text-sm font-semibold text-slate-900 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+  required
+/>
             </div>
             <p className="text-[11px] text-slate-500 mt-1">
               Enter 10-digit mobile number. MediDesk will instantly check for returning patient records.

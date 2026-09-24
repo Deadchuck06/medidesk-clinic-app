@@ -145,6 +145,67 @@ SAFETY RULES:
           }
         });
       }
+
+  app.post("/api/ai/transcribe-audio", async (req, res) => {
+  try {
+    const { audioBase64, mimeType } = req.body;
+
+    if (!audioBase64) {
+      return res.status(400).json({
+        error: "Audio data is required",
+      });
+    }
+
+    const ai = getGenAI();
+
+    if (!ai) {
+      return res.status(500).json({
+        error: "Gemini API is not configured",
+      });
+    }
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents: [
+        {
+          text: `Transcribe the doctor's spoken clinical notes accurately.
+
+Return ONLY the transcript of what was spoken.
+
+Important:
+- Do not summarize.
+- Do not diagnose.
+- Do not add information.
+- Preserve medical terms, medicine names, dosages, symptoms and measurements.
+- If a word is unclear, do not invent clinical information.`,
+        },
+        {
+          inlineData: {
+            mimeType: mimeType || "audio/webm",
+            data: audioBase64,
+          },
+        },
+      ],
+    });
+
+    const transcript = response.text?.trim();
+
+    if (!transcript) {
+      throw new Error("Gemini returned an empty transcript");
+    }
+
+    return res.json({
+      transcript,
+      isSimulated: false,
+    });
+  } catch (err: any) {
+    console.error("Audio transcription failed:", err);
+
+    return res.status(500).json({
+      error: err.message || "Failed to transcribe audio",
+    });
+  }
+});
       contents.push({
         text: `You are an AI Clinical Assistant assisting an outpatient doctor in reviewing an uploaded medical report / lab test.
 Report Category: ${reportType || "General Medical Report"}
